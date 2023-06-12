@@ -1,52 +1,59 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-type TableRow = {
-  [key: string]: string;
-};
+interface TableRow {
+  [column: string]: string;
+}
 
-type TableState = {
+interface Table {
+  name: string;
   columns: string[];
   rows: TableRow[];
-};
+}
+
+interface TableState {
+  tables: Table[];
+}
 
 const initialState: TableState = {
-  columns: [],
-  rows: [],
+  tables: [],
 };
 
 const tableSlice = createSlice({
   name: 'table',
   initialState,
   reducers: {
-    addColumn: (state, action: PayloadAction<string>) => {
-      state.columns.push(action.payload);
-      state.rows.forEach((row) => {
-        row[action.payload] = '';
-      });
+    createTable: (state, action: PayloadAction<Table>) => {
+      state.tables.push(action.payload);
     },
-    removeColumn: (state, action: PayloadAction<string>) => {
-      const columnToRemove = action.payload;
-      state.columns = state.columns.filter((column) => column !== columnToRemove);
-      state.rows.forEach((row) => {
-        delete row[columnToRemove];
-      });
-    },
-    addRow: (state) => {
-      const newRow: TableRow = {};
-      state.columns.forEach((column) => {
-        newRow[column] = '';
-      });
-      state.rows.push(newRow);
+    addRow: (state, action: PayloadAction<number>) => {
+      const tableIndex = action.payload;
+      state.tables[tableIndex].rows.push({});
     },
     updateCell: (
       state,
-      action: PayloadAction<{ rowIndex: number; column: string; value: string }>
+      action: PayloadAction<{
+        tableIndex: number;
+        rowIndex: number;
+        column: string;
+        value: string;
+      }>
     ) => {
-      const { rowIndex, column, value } = action.payload;
-      state.rows[rowIndex][column] = value;
+      const { tableIndex, rowIndex, column, value } = action.payload;
+      state.tables[tableIndex].rows[rowIndex][column] = value;
+    },
+    addColumn: (
+      state,
+      action: PayloadAction<{ tableIndex: number; column: string }>
+    ) => {
+      const { tableIndex, column } = action.payload;
+      state.tables[tableIndex].columns.push(column);
+      state.tables[tableIndex].rows.forEach((row) => {
+        row[column] = '';
+      });
     },
   },
 });
 
-export const { addColumn, removeColumn, addRow, updateCell } = tableSlice.actions;
+export const { createTable, addRow, updateCell, addColumn } = tableSlice.actions;
+
 export default tableSlice.reducer;

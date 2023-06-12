@@ -2,127 +2,160 @@ import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
 import {
-  addColumn,
+  createTable,
   addRow,
-  removeColumn,
   updateCell,
+  addColumn,
 } from "../../features/tableSlice";
 import { Trash } from "react-feather";
 
 type TableProps = {
-  initialColumns: string[];
+  columns: string[];
 };
 
-const Table: React.FC<TableProps> = ({ initialColumns }) => {
+const Table: React.FC<TableProps> = ({ columns }) => {
   const dispatch = useDispatch();
-  const storedRows = useSelector((state: RootState) => state.table.rows);
-  const storedColumns = useSelector((state: RootState) => state.table.columns);
-  const [newColumn, setNewColumn] = useState("");
+  const tables = useSelector((state: RootState) => state.table.tables);
+  const [newTableName, setNewTableName] = useState("");
+  const [activeTableIndex, setActiveTableIndex] = useState(0);
 
   useEffect(() => {
-    if (storedColumns.length === 0) {
-      dispatch(addColumn(""));
+    if (tables?.length! === 0) {
+      dispatch(
+        createTable({
+          name: "Spreadsheet 1",
+          columns: [
+            "Date",
+            "Customer name",
+            "item sold",
+            "Quantity",
+            "Unit price",
+          ],
+          rows: [{}],
+        })
+      );
     }
-  }, [dispatch, storedColumns.length]);
+  }, [dispatch, tables?.length]);
 
-  // Save table data to local storage on changes
-  useEffect(() => {
-    localStorage.setItem("tableData", JSON.stringify(storedRows));
-    localStorage.setItem("tableColumns", JSON.stringify(storedColumns));
-  }, [storedRows, storedColumns]);
-  // Load table data from local storage on component mount
-
-  useEffect(() => {
-    const storedRows = localStorage.getItem("tableData");
-    if (storedRows) {
-      dispatch(addRow()); // Add an initial row
-      const parsedRows = JSON.parse(storedRows);
-      parsedRows.forEach((row: { [key: string]: string }) => {
-        Object.keys(row).forEach((column) => {
-          dispatch(
-            updateCell({
-              rowIndex: parsedRows.indexOf(row),
-              column,
-              value: row[column],
-            })
-          );
-        });
-      });
-    } else {
-      dispatch(addRow()); // Add an initial row if no data is stored
-    }
-  }, [dispatch, initialColumns]);
-
-  // Add new column
-  const handleAddColumn = () => {
-    if (newColumn.trim() !== "") {
-      dispatch(addColumn(newColumn));
-      setNewColumn("");
+  const handleCreateTable = () => {
+    if (newTableName.trim() !== "") {
+      dispatch(
+        createTable({
+          name: newTableName,
+          columns: [
+            "Date",
+            "Customer name",
+            "item sold",
+            "Quantity",
+            "Unit price",
+          ],
+          rows: [{}],
+        })
+      );
+      setNewTableName("");
     }
   };
-  // remove column
-  const handleRemoveColumn = (column: string) => {
-    dispatch(removeColumn(column));
-  };
-  // Add new row
-  const handleAddRow = () => {
-    dispatch(addRow());
+
+  const handleAddRow = (tableIndex: number) => {
+    dispatch(addRow(tableIndex));
   };
 
-  // Handle input change in cells
   const handleCellChange = (
+    tableIndex: number,
     rowIndex: number,
     column: string,
     value: string
   ) => {
-    dispatch(updateCell({ rowIndex, column, value }));
+    dispatch(
+      updateCell({
+        tableIndex,
+        rowIndex,
+        column,
+        value,
+      })
+    );
   };
 
+  const handleAddColumn = (tableIndex: number) => {
+    const newColumn = prompt("Enter column name:");
+    if (newColumn && newColumn.trim() !== "") {
+      dispatch(addColumn({ tableIndex, column: newColumn }));
+    }
+  };
+
+  const handleTabClick = (tableIndex: number) => {
+    setActiveTableIndex(tableIndex);
+  };
   return (
     <div>
       <div>
         <input
           type="text"
-          value={newColumn}
-          onChange={(e) => setNewColumn(e.target.value)}
+          placeholder="New Table Name"
+          className="text-black"
+          value={newTableName}
+          onChange={(e) => setNewTableName(e.target.value)}
         />
-        <button onClick={handleAddColumn}>Add Column</button>
+        <button onClick={handleCreateTable}>Create Table</button>
       </div>
-      <table>
-        <thead>
-          <tr>
-            {storedColumns.map((column) => (
-              <th key={column}>
-                <div className="flex items-center justify-between">
-                {column}
-                <button onClick={() => handleRemoveColumn(column)}>
-                  <Trash size={15} />
-                </button>
-                </div>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {storedRows.map((row, rowIndex) => (
-            <tr key={rowIndex}>
-              {storedColumns.map((column, columnIndex) => (
-                <td key={columnIndex}>
-                  <input
-                    type="text"
-                    value={row[column] || ""}
-                    className="text-black"
-                    onChange={(e) =>
-                      handleCellChange(rowIndex, column, e.target.value)
-                    }
-                  />
-                </td>
-              ))}
-            </tr>
+      <div>
+        <ul className="flex">
+          {tables.map((table, tableIndex) => (
+            <li
+              key={tableIndex}
+              className={`cursor-pointer p-2 ${
+                activeTableIndex === tableIndex ? "bg-gray-300" : ""
+              }`}
+              onClick={() => handleTabClick(tableIndex)}
+            >
+              {table.name}
+            </li>
           ))}
-        </tbody>
-      </table>
-      <button onClick={handleAddRow}>Add Row</button>
+        </ul>
+      </div>
+      {tables.map((table, tableIndex) => (
+        <div
+          key={tableIndex}
+          className={`${activeTableIndex === tableIndex ? "" : "hidden"}`}
+        >
+          <h2>{table.name}</h2>
+          <table>
+            <thead>
+              <tr>
+                {table.columns.map((column, columnIndex) => (
+                  <th key={columnIndex}>{column}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {table.rows.map((row, rowIndex) => (
+                <tr key={rowIndex}>
+                  {table.columns.map((column, columnIndex) => (
+                    <td key={columnIndex}>
+                      <input
+                        type="text"
+                        value={row[column] || ""}
+                        onChange={(e) =>
+                          handleCellChange(
+                            tableIndex,
+                            rowIndex,
+                            column,
+                            e.target.value
+                          )
+                        }
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <button onClick={() => handleAddRow(tableIndex)}>Add Row</button>
+          <button onClick={() => handleAddColumn(tableIndex)}>
+            Add Column
+          </button>
+        </div>
+      ))}
     </div>
   );
 };

@@ -8,8 +8,13 @@ const store = configureStore({
   },
   preloadedState: {
     table: {
-      columns: initialColumns,
-      rows: []
+      tables: [
+        {
+          name: "Spreadsheet 1",
+          columns: initialColumns,
+          rows: []
+        }
+      ]
     }
   }
 });
