@@ -1,17 +1,37 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
-import { addRow, updateCell } from "../../features/tableSlice";
+import {
+  addColumn,
+  addRow,
+  removeColumn,
+  updateCell,
+} from "../../features/tableSlice";
+import { Trash } from "react-feather";
 
 type TableProps = {
-  columns: string[];
+  initialColumns: string[];
 };
 
-const Table: React.FC<TableProps> = ({ columns }) => {
+const Table: React.FC<TableProps> = ({ initialColumns }) => {
   const dispatch = useDispatch();
-  const rows = useSelector((state: RootState) => state.table.rows);
+  const storedRows = useSelector((state: RootState) => state.table.rows);
+  const storedColumns = useSelector((state: RootState) => state.table.columns);
+  const [newColumn, setNewColumn] = useState("");
 
+  useEffect(() => {
+    if (storedColumns.length === 0) {
+      dispatch(addColumn(""));
+    }
+  }, [dispatch, storedColumns.length]);
+
+  // Save table data to local storage on changes
+  useEffect(() => {
+    localStorage.setItem("tableData", JSON.stringify(storedRows));
+    localStorage.setItem("tableColumns", JSON.stringify(storedColumns));
+  }, [storedRows, storedColumns]);
   // Load table data from local storage on component mount
+
   useEffect(() => {
     const storedRows = localStorage.getItem("tableData");
     if (storedRows) {
@@ -31,8 +51,19 @@ const Table: React.FC<TableProps> = ({ columns }) => {
     } else {
       dispatch(addRow()); // Add an initial row if no data is stored
     }
-  }, [dispatch]);
+  }, [dispatch, initialColumns]);
 
+  // Add new column
+  const handleAddColumn = () => {
+    if (newColumn.trim() !== "") {
+      dispatch(addColumn(newColumn));
+      setNewColumn("");
+    }
+  };
+  // remove column
+  const handleRemoveColumn = (column: string) => {
+    dispatch(removeColumn(column));
+  };
   // Add new row
   const handleAddRow = () => {
     dispatch(addRow());
@@ -47,25 +78,35 @@ const Table: React.FC<TableProps> = ({ columns }) => {
     dispatch(updateCell({ rowIndex, column, value }));
   };
 
-  // Save table data to local storage on changes
-  useEffect(() => {
-    localStorage.setItem("tableData", JSON.stringify(rows));
-  }, [rows]);
-
   return (
     <div>
+      <div>
+        <input
+          type="text"
+          value={newColumn}
+          onChange={(e) => setNewColumn(e.target.value)}
+        />
+        <button onClick={handleAddColumn}>Add Column</button>
+      </div>
       <table>
         <thead>
           <tr>
-            {columns.map((column) => (
-              <th key={column}>{column}</th>
+            {storedColumns.map((column) => (
+              <th key={column}>
+                <div className="flex items-center justify-between">
+                {column}
+                <button onClick={() => handleRemoveColumn(column)}>
+                  <Trash size={15} />
+                </button>
+                </div>
+              </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, rowIndex) => (
+          {storedRows.map((row, rowIndex) => (
             <tr key={rowIndex}>
-              {columns.map((column, columnIndex) => (
+              {storedColumns.map((column, columnIndex) => (
                 <td key={columnIndex}>
                   <input
                     type="text"

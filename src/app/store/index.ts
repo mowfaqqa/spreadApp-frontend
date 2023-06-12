@@ -1,9 +1,16 @@
 import { configureStore } from "@reduxjs/toolkit";
 import tableReducer from '../features/tableSlice'
 
+const initialColumns = ['Date', 'Customer name', 'item sold', 'Quantity', 'Unit price']
 const store = configureStore({
   reducer: {
     table: tableReducer,
+  },
+  preloadedState: {
+    table: {
+      columns: initialColumns,
+      rows: []
+    }
   }
 });
 
