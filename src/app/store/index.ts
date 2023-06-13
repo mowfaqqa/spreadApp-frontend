@@ -10,6 +10,7 @@ const store = configureStore({
     table: {
       tables: [
         {
+          id: "1",
           name: "Spreadsheet 1",
           columns: initialColumns,
           rows: []

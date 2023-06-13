@@ -3,9 +3,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
 import {
   createTable,
+  deleteTable,
   addRow,
   updateCell,
   addColumn,
+  deleteColumn,
 } from "../../features/tableSlice";
 import { Trash } from "react-feather";
 
@@ -23,6 +25,7 @@ const Table: React.FC<TableProps> = ({ columns }) => {
     if (tables?.length! === 0) {
       dispatch(
         createTable({
+          id: "1",
           name: "Spreadsheet 1",
           columns: [
             "Date",
@@ -41,6 +44,7 @@ const Table: React.FC<TableProps> = ({ columns }) => {
     if (newTableName.trim() !== "") {
       dispatch(
         createTable({
+          id: new Date().getTime().toString(),
           name: newTableName,
           columns: [
             "Date",
@@ -55,20 +59,22 @@ const Table: React.FC<TableProps> = ({ columns }) => {
       setNewTableName("");
     }
   };
-
-  const handleAddRow = (tableIndex: number) => {
-    dispatch(addRow(tableIndex));
+  const handleDeleteTable = (tableId: string) => {
+    dispatch(deleteTable(tableId));
+  };
+  const handleAddRow = (tableId: string) => {
+    dispatch(addRow(tableId));
   };
 
   const handleCellChange = (
-    tableIndex: number,
+    tableId: string,
     rowIndex: number,
     column: string,
     value: string
   ) => {
     dispatch(
       updateCell({
-        tableIndex,
+        tableId,
         rowIndex,
         column,
         value,
@@ -76,11 +82,15 @@ const Table: React.FC<TableProps> = ({ columns }) => {
     );
   };
 
-  const handleAddColumn = (tableIndex: number) => {
+  const handleAddColumn = (tableId: string) => {
     const newColumn = prompt("Enter column name:");
     if (newColumn && newColumn.trim() !== "") {
-      dispatch(addColumn({ tableIndex, column: newColumn }));
+      dispatch(addColumn({ tableId, column: newColumn }));
     }
+  };
+
+  const handleDeleteColumn = (tableId: string, columnIndex: number) => {
+    dispatch(deleteColumn({ tableId, columnIndex }));
   };
 
   const handleTabClick = (tableIndex: number) => {
@@ -115,7 +125,7 @@ const Table: React.FC<TableProps> = ({ columns }) => {
       </div>
       {tables.map((table, tableIndex) => (
         <div
-          key={tableIndex}
+          key={table.id}
           className={`${activeTableIndex === tableIndex ? "" : "hidden"}`}
         >
           <h2>{table.name}</h2>
@@ -137,7 +147,7 @@ const Table: React.FC<TableProps> = ({ columns }) => {
                         value={row[column] || ""}
                         onChange={(e) =>
                           handleCellChange(
-                            tableIndex,
+                            table.id,
                             rowIndex,
                             column,
                             e.target.value
@@ -146,13 +156,21 @@ const Table: React.FC<TableProps> = ({ columns }) => {
                       />
                     </td>
                   ))}
+                  <td>
+                    <button
+                      onClick={() => handleDeleteColumn(table.id, rowIndex)}
+                    >
+                      Delete
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <button onClick={() => handleAddRow(tableIndex)}>Add Row</button>
-          <button onClick={() => handleAddColumn(tableIndex)}>
-            Add Column
+          <button onClick={() => handleAddRow(table.id)}>Add Row</button>
+          <button onClick={() => handleAddColumn(table.id)}>Add Column</button>
+          <button onClick={() => handleDeleteTable(table.id)}>
+            Delete Table
           </button>
         </div>
       ))}
