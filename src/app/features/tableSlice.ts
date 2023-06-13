@@ -1,14 +1,10 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-interface TableRow {
-  [column: string]: string;
-}
-
 interface Table {
-  id: string;
+  _id: string;
   name: string;
   columns: string[];
-  rows: TableRow[];
+  rows: Record<string, string>[];
 }
 
 interface TableState {
@@ -26,69 +22,58 @@ const tableSlice = createSlice({
     createTable: (state, action: PayloadAction<Table>) => {
       state.tables.push(action.payload);
     },
-    deleteTable: (state, action: PayloadAction<string>) => {
-      const tableId = action.payload;
-      state.tables = state.tables.filter((table) => table.id !== tableId);
+    deleteTable: (state, action: PayloadAction<{ tableId: string }>) => {
+      const { tableId } = action.payload;
+      state.tables = state.tables.filter((table) => table._id !== tableId);
     },
-    addRow: (state, action: PayloadAction<string>) => {
-      const tableId = action.payload;
-      const table = state.tables.find((table) => table.id === tableId);
+    addRow: (state, action: PayloadAction<{ tableId: string }>) => {
+      const { tableId } = action.payload;
+      const table = state.tables.find((table) => table._id === tableId);
       if (table) {
-        table.rows.push({})
-      } 
-    },
-    updateCell: (
-      state,
-      action: PayloadAction<{
-        tableId: string;
-        rowIndex: number;
-        column: string;
-        value: string;
-      }>
-    ) => {
-      const { tableId, rowIndex, column, value } = action.payload;
-      const table = state.tables.find((table) => table.id  === tableId);
-      if (table) {
-        table.rows[rowIndex][column] = value
+        const newRow: Record<string, string> = {};
+        table.columns.forEach((column) => {
+          newRow[column] = '';
+        });
+        table.rows.push(newRow);
       }
     },
-    addColumn: (
-      state,
-      action: PayloadAction<{ tableId: string; column: string }>
-    ) => {
-      const { tableId, column } = action.payload;
-      const table = state.tables.find((table) => table.id === tableId);
+    addColumn: (state, action: PayloadAction<{ tableId: string; columnName: string }>) => {
+      const { tableId, columnName } = action.payload;
+      const table = state.tables.find((table) => table._id === tableId);
       if (table) {
-        table.columns.push(column);
+        table.columns.push(columnName);
         table.rows.forEach((row) => {
-          row[column] = '';
-        })
+          row[columnName] = '';
+        });
       }
     },
-    deleteColumn: (
+    updateCellValue: (
       state,
-      action: PayloadAction<{tableId: string; columnIndex: number}>
+      action: PayloadAction<{ tableId: string; rowIndex: number; columnName: string; value: string }>
     ) => {
-      const { tableId, columnIndex } = action.payload;
-      const table = state.tables.find((table) => table.id === tableId);
+      const { tableId, rowIndex, columnName, value } = action.payload;
+      const table = state.tables.find((table) => table._id === tableId);
       if (table) {
-        const columnToDelete = table.columns[columnIndex];
-        table.columns.splice(columnIndex, 1);
-        table.rows.forEach((row) => {
-          delete row[columnToDelete]
-        })
+        table.rows[rowIndex][columnName] = value;
       }
-    }
+    },
+    deleteColumn: (state, action: PayloadAction<{ tableId: string; columnName: string }>) => {
+      const { tableId, columnName } = action.payload;
+      const table = state.tables.find((table) => table._id === tableId);
+      if (table) {
+        const columnIndex = table.columns.indexOf(columnName);
+        if (columnIndex !== -1) {
+          table.columns.splice(columnIndex, 1);
+          table.rows.forEach((row) => {
+            delete row[columnName];
+          });
+        }
+      }
+    },
   },
 });
 
-export const {
-  createTable,
-  deleteTable,
-  addRow,
-  updateCell,
-  addColumn,
-  deleteColumn,
-} = tableSlice.actions;
+export const { createTable, deleteTable, addRow, addColumn, updateCellValue, deleteColumn } =
+  tableSlice.actions;
 
 export default tableSlice.reducer;
