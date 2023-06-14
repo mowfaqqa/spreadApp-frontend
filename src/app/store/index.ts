@@ -1,4 +1,4 @@
-import { configureStore } from "@reduxjs/toolkit";
+import { configureStore, getDefaultMiddleware } from "@reduxjs/toolkit";
 import tableReducer from '../features/tableSlice'
 
 const initialColumns = ['Date', 'Customer name', 'item sold', 'Quantity', 'Unit price']
@@ -6,18 +6,6 @@ const store = configureStore({
   reducer: {
     table: tableReducer,
   },
-  preloadedState: {
-    table: {
-      tables: [
-        {
-          id: "1",
-          name: "Spreadsheet 1",
-          columns: initialColumns,
-          rows: []
-        }
-      ]
-    }
-  }
 });
 
 export type RootState = ReturnType<typeof store.getState>;

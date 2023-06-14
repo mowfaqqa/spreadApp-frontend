@@ -8,7 +8,7 @@ export default function Home() {
   const columns = ["Date", "Customer Name", "Items Sold", "Quantity", "Unit"];
   return (
     <Provider store={store}>
-      <Table />
+      <Table columns={columns} />
     </Provider>
   );
 }

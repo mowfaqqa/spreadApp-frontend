@@ -1,132 +1,103 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
+  addRow,
+  updateCell,
+  addColumn,
   createTable,
   deleteTable,
-  addRow,
-  addColumn,
-  updateCellValue,
   deleteColumn,
 } from "../../features/tableSlice";
 import { RootState } from "../../store";
-import axios from "axios";
 import { Plus, Trash } from "react-feather";
 
-interface Table {
-  _id: string;
-  name: string;
+type TableProps = {
   columns: string[];
-  rows: Record<string, string>[];
-}
-const Table: React.FC = () => {
+};
+const Table: React.FC<TableProps> = ({ columns }) => {
+  const initialColumns = useMemo(
+    () => ["Date", "Customer name", "item sold", "Quantity", "Unit price"],
+    []
+  );
   const dispatch = useDispatch();
   const tables = useSelector((state: RootState) => state.table.tables);
-  const [newTableName, setNewTableName] = useState("");
   const [activeTableIndex, setActiveTableIndex] = useState(0);
+  const [newTableName, setNewTableName] = useState("");
+
+  
+  useEffect(() => {
+    if (tables.length === 0) {
+      dispatch(
+        createTable({
+          id: "1",
+          name: "Spreadsheet 1",
+          columns: initialColumns,
+          rows: [{}],
+        })
+      );
+    }
+  }, [dispatch, initialColumns, tables.length]);
 
   useEffect(() => {
-    const fetchTables = async () => {
-      try {
-        const response = await axios.get("/api/tables");
-        const fetchedTables = response.data;
-        dispatch(createTable(fetchedTables));
+    localStorage.setItem("tableData", JSON.stringify(tables));
+  }, [tables]);
 
-        // Check local storage for saved tables
-        const savedTables = localStorage.getItem("tables");
-        if (savedTables) {
-          const parsedTables = JSON.parse(savedTables);
-          dispatch(createTable(parsedTables));
-        }
-      } catch (error) {
-        console.error("Error fetching tables:", error);
-      }
-    };
-    fetchTables();
-  }, [dispatch]);
-
-  const handleCreateTable = async () => {
-    const newTable = {
-      name: newTableName,
-      columns: ["Date", "Customer Name", "Items Sold", "Quantity", "Unit"],
-      rows: [],
-    };
-    try {
-      const response = await axios.post<Table>("/api/tables", newTable);
-      const createdTable = response.data;
-      dispatch(createTable(createdTable));
-      setActiveTableIndex(tables.length);
-
-      // Save updated tables to local storage
-      localStorage.setItem("tables", JSON.stringify(tables));
-    } catch (error) {
-      console.error("Error creating table:", error);
+  // create table
+  const handleCreateTable = () => {
+    if (newTableName.trim() !== "") {
+      dispatch(
+        createTable({
+          id: new Date().getTime().toString(),
+          name: newTableName,
+          columns: initialColumns,
+          rows: [{}],
+        })
+      );
+      setNewTableName("");
     }
   };
 
-  const handleDeleteTable = async (tableId: string) => {
-    try {
-      await axios.delete(`/api/tables?id=${tableId}`);
-      dispatch(deleteTable({ tableId }));
-      setActiveTableIndex(0);
-
-      // Save updated tables to local storage
-      localStorage.setItem("tables", JSON.stringify(tables));
-    } catch (error) {
-      console.error("Error deleting table:", error);
-    }
+  // delete table
+  const handleDeleteTable = (tableId: string) => {
+    dispatch(deleteTable(tableId));
   };
-
+  // Add new row
   const handleAddRow = (tableId: string) => {
-    dispatch(addRow({ tableId }));
-
-    // Save updated tables to local storage
-    localStorage.setItem("tables", JSON.stringify(tables));
+    dispatch(addRow(tableId));
   };
 
-  const handleAddColumn = (tableId: string) => {
-    const columnName = `Column ${tables[activeTableIndex].columns?.length + 1}`;
-    dispatch(addColumn({ tableId, columnName }));
-    // Save updated tables to local storage
-    localStorage.setItem("tables", JSON.stringify(tables));
-  };
+  // Handle input change in cells
 
-  const saveTableData = async (tableId: string) => {
-    const table = tables.find((table) => table._id === tableId);
-    if (table) {
-      try {
-        await axios.put(`/api/tables?id=${tableId}`, table);
-        localStorage.setItem("tables", JSON.stringify(table));
-      } catch (error) {
-        console.error("Error saving table data:", error);
-      }
-    }
-  };
-  const handleCellValueChange = (
-    tableId: string,
+  const handleCellChange = (
+    tableIndex: number,
     rowIndex: number,
-    columnName: string,
+    column: string,
     value: string
   ) => {
-    dispatch(updateCellValue({ tableId, rowIndex, columnName, value }));
-
-    // Save updated tables to local storage
-    localStorage.setItem("tables", JSON.stringify(tables));
-
-    // Save updated table data to the database
-    saveTableData(tableId);
+    dispatch(
+      updateCell({
+        tableIndex,
+        rowIndex,
+        column,
+        value,
+      })
+    );
   };
 
-  const handleDeleteColumn = (tableId: string, columnName: string) => {
-    dispatch(deleteColumn({ tableId, columnName }));
-    // Save updated tables to local storage
-    localStorage.setItem("tables", JSON.stringify(tables));
-
-    // Save updated table data to the database
-    saveTableData(tableId);
+  // add new column
+  const handleAddColumn = (tableId: string) => {
+    const newColumn = prompt("Enter column name:");
+    if (newColumn && newColumn.trim() !== "") {
+      dispatch(addColumn({ tableId, column: newColumn }));
+    }
   };
-
-  const activeTable = tables[activeTableIndex];
-
+  const handleDeleteColumn = (tableId: string, columnIndex: number) => {
+    dispatch(deleteColumn({ tableId, columnIndex }));
+  };
+  //Tab handler
+  const handleTabClick = (tableIndex: number) => {
+    setActiveTableIndex(tableIndex);
+  };
   return (
     <>
       <div className="flex">
@@ -137,13 +108,13 @@ const Table: React.FC = () => {
               <Plus size={15} />
             </button>
           </div>
-          {tables.map((table, index) => (
+          {tables.map((table, tableIndex) => (
             <button
-              key={table._id}
+              key={tableIndex}
               className={` px-6 py-2 text-sm font-medium ${
-                index === activeTableIndex ? "bg-gray-200" : "bg-gray-50"
+                tableIndex === activeTableIndex ? "bg-gray-200" : "bg-gray-50"
               }`}
-              onClick={() => setActiveTableIndex(index)}
+              onClick={() => handleTabClick(tableIndex)}
             >
               {table.name}
             </button>
@@ -157,7 +128,7 @@ const Table: React.FC = () => {
                 placeholder="enter new table name"
                 className="text-black py-1 mr-3 border border-gray-300 px-3 "
                 value={newTableName}
-                onBlur={(e) => setNewTableName(e.target.value)}
+                onChange={(e) => setNewTableName(e.target.value)}
               />
               <button
                 className="ml-auto text-sm px-4 py-2 bg-green-200 text-green-500 rounded"
@@ -170,94 +141,90 @@ const Table: React.FC = () => {
             {tables.length > 0 && (
               <button
                 className="ml-2 px-4 text-sm py-2 bg-red-500 text-white rounded"
-                onClick={() => handleDeleteTable(tables[activeTableIndex]._id)}
+                onClick={() => handleDeleteTable(tables[activeTableIndex].id)}
               >
                 Delete Table
               </button>
             )}
           </div>
           {tables.length > 0 && (
-            <div>
-              <table className="w-full mx-3 border-collapse">
-                <thead>
-                  <tr>
-                    {tables[activeTableIndex].columns?.map((column: string) => (
-                      <th
-                        key={column}
-                        className="border border-gray-300 px-4 py-2 bg-gray-100 text-gray-600 text-sm font-semibold"
-                      >
-                        <div className="flex items-center justify-between">
-                          {column}
-                          <button
-                            className="ml-2 text-red-500"
-                            onClick={() =>
-                              handleDeleteColumn(
-                                tables[activeTableIndex]._id,
-                                column
-                              )
-                            }
-                          >
-                            <Trash size={15} />
-                          </button>
-                        </div>
-                      </th>
-                    ))}
-                    <th className="border text-sm border-gray-300 px-4 py-2 bg-gray-100 font-semibold">
-                      <button
-                        className="flex justify-center items-center gap-4 text-gray-500"
-                        onClick={() =>
-                          handleAddColumn(tables[activeTableIndex]._id)
-                        }
-                      >
-                        <Plus size={15} />
-                        Add Column
-                      </button>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tables[activeTableIndex].rows?.map((row, rowIndex) => (
-                    <tr key={rowIndex}>
-                      {tables[activeTableIndex].columns.map(
-                        (column, columnIndex) => (
-                          <td
+            <>
+              {tables.map((table, tableIndex) => (
+                <div
+                  key={tableIndex}
+                  className={`${
+                    activeTableIndex === tableIndex ? "" : "hidden"
+                  }`}
+                >
+                  <h2>{table.name}</h2>
+                  <table className="w-full mx-3 border-collapse">
+                    <thead>
+                      <tr>
+                        {table.columns?.map((column: string, columnIndex) => (
+                          <th
                             key={columnIndex}
-                            className="border border-gray-300 px-4 py-2"
-                        
+                            className="border border-gray-300 px-4 py-2 bg-gray-100 text-gray-600 text-sm font-semibold"
                           >
-                            <input
-                              type="text"
-                              value={row[column] || ""}
-                              onChange={(e) =>
-                                handleCellValueChange(
-                                  tables[activeTableIndex]._id,
-                                  rowIndex,
-                                  column,
-                                  e.target.value
-                                )
-                              }
-                              className="text-blackborder-none py-1 outline-none focus:outline-none"
-                            />
-                          </td>
-                        )
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <button
-                className="mt-4 px-4 mx-4 py-2 text-xs bg-gray-500 text-white rounded"
-                onClick={() => handleAddRow(tables[activeTableIndex]._id)}
-              >
-                Add Row
-              </button>
-              <button
-                className="mt-4 px-4 py-2 text-xs bg-gray-500 text-white rounded"
-                onClick={() => saveTableData(tables[activeTableIndex]._id)}
-              >
-                Save
-              </button>
-            </div>
+                            <div className="flex items-center justify-between">
+                              {column}
+                              <button
+                                className="ml-2 text-red-500"
+                                onClick={() =>
+                                  handleDeleteColumn(table.id, columnIndex)
+                                }
+                              >
+                                <Trash size={15} />
+                              </button>
+                            </div>
+                          </th>
+                        ))}
+                        <th className="border text-sm border-gray-300 px-4 py-2 bg-gray-100 font-semibold">
+                          <button
+                            className="flex justify-center items-center gap-4 text-gray-500"
+                            onClick={() => handleAddColumn(table.id)}
+                          >
+                            <Plus size={15} />
+                            Add Column
+                          </button>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {table.rows?.map((row, rowIndex) => (
+                        <tr key={rowIndex}>
+                          {table.columns.map((column, columnIndex) => (
+                            <td
+                              key={columnIndex}
+                              className="border border-gray-300 px-4 py-2"
+                            >
+                              <input
+                                type="text"
+                                value={row[column] || ""}
+                                onChange={(e) =>
+                                  handleCellChange(
+                                    tableIndex,
+                                    rowIndex,
+                                    column,
+                                    e.target.value
+                                  )
+                                }
+                                className="text-black border-none py-1 outline-none focus:outline-none"
+                              />
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <button
+                    className="mt-4 px-4 mx-4 py-2 text-xs bg-gray-500 text-white rounded"
+                    onClick={() => handleAddRow(table.id)}
+                  >
+                    Add Row
+                  </button>
+                </div>
+              ))}
+            </>
           )}
         </div>
       </div>
@@ -266,3 +233,6 @@ const Table: React.FC = () => {
 };
 
 export default Table;
+function uuidv4() {
+  throw new Error("Function not implemented.");
+}
